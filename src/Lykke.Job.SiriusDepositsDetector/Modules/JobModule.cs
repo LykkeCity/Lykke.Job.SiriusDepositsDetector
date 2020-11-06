@@ -1,43 +1,32 @@
-﻿using Autofac;
+﻿using System;
+using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using AzureStorage.Tables;
 using Common;
-using Common.Log;
+using JetBrains.Annotations;
+using Lykke.Common.Log;
+using Lykke.Job.SiriusDepositsDetector.AzureRepositories;
+using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
 using Lykke.Job.SiriusDepositsDetector.Services;
-using Lykke.Job.SiriusDepositsDetector.Settings.JobSettings;
+using Lykke.Job.SiriusDepositsDetector.Settings;
 using Lykke.Sdk;
-using Lykke.Sdk.Health;
+using Lykke.Service.Assets.Client;
 using Lykke.SettingsReader;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Lykke.Job.SiriusDepositsDetector.Modules
 {
+    [UsedImplicitly]
     public class JobModule : Module
     {
-        private readonly SiriusDepositsDetectorJobSettings _settings;
-        private readonly IReloadingManager<SiriusDepositsDetectorJobSettings> _settingsManager;
-        // NOTE: you can remove it if you don't need to use IServiceCollection extensions to register service specific dependencies
-        private readonly IServiceCollection _services;
+        private readonly IReloadingManager<AppSettings> _appSettings;
 
-        public JobModule(SiriusDepositsDetectorJobSettings settings, IReloadingManager<SiriusDepositsDetectorJobSettings> settingsManager)
+        public JobModule(IReloadingManager<AppSettings> appSettings)
         {
-            _settings = settings;
-            _settingsManager = settingsManager;
-
-            _services = new ServiceCollection();
+            _appSettings = appSettings;
         }
 
         protected override void Load(ContainerBuilder builder)
         {
-            // NOTE: Do not register entire settings in container, pass necessary settings to services which requires them
-            // ex:
-            // builder.RegisterType<QuotesPublisher>()
-            //  .As<IQuotesPublisher>()
-            //  .WithParameter(TypedParameter.From(_settings.Rabbit.ConnectionString))
-
-            builder.RegisterType<HealthService>()
-                .As<IHealthService>()
-                .SingleInstance();
-
             builder.RegisterType<StartupManager>()
                 .As<IStartupManager>()
                 .SingleInstance();
@@ -47,9 +36,34 @@ namespace Lykke.Job.SiriusDepositsDetector.Modules
                 .AutoActivate()
                 .SingleInstance();
 
-            // TODO: Add your dependencies here
+            builder.RegisterInstance(
+                new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, true, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
+            ).As<Swisschain.Sirius.Api.ApiClient.IApiClient>();
 
-            builder.Populate(_services);
+            builder.RegisterType<DepositsDetectorService>()
+                .WithParameter(TypedParameter.From(_appSettings.CurrentValue.SiriusApiServiceClient.BrokerAccountId))
+                .As<IStartable>()
+                .As<IStopable>()
+                .AutoActivate()
+                .SingleInstance();
+
+            builder.Register(ctx =>
+                new LastCursorRepository(AzureTableStorage<CursorEntity>.Create(
+                    _appSettings.ConnectionString(x => x.SiriusDepositsDetectorJob.Db.DataConnString),
+                    "LastDepostCursors", ctx.Resolve<ILogFactory>()))
+            ).As<ILastCursorRepository>().SingleInstance();
+
+            builder.Register(ctx =>
+                new OperationIdsRepository(AzureTableStorage<OperationIdEntity>.Create(
+                    _appSettings.ConnectionString(x => x.SiriusDepositsDetectorJob.Db.DataConnString),
+                    "OperationIds", ctx.Resolve<ILogFactory>()))
+            ).As<IOperationIdsRepository>().SingleInstance();
+
+            builder.RegisterMeClient(_appSettings.CurrentValue.MatchingEngineClient.IpEndpoint.GetClientIpEndPoint(), true);
+            builder.RegisterAssetsClient(
+                AssetServiceSettings.Create(
+                    new Uri(_appSettings.CurrentValue.AssetsServiceClient.ServiceUrl),
+                    _appSettings.CurrentValue.AssetsServiceClient.ExpirationPeriod));
         }
     }
 }
