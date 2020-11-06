@@ -60,6 +60,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
         public void Dispose()
         {
+            _cancellationTokenSource?.Cancel();
         }
 
         public void Stop()
