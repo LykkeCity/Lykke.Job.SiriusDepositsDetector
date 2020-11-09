@@ -160,7 +160,15 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                 }
                 catch (RpcException ex)
                 {
-                    _log.Warning($"RpcException. {ex.Status}; {ex.StatusCode}", ex);
+                    if (ex.StatusCode == StatusCode.ResourceExhausted)
+                    {
+                        _log.Warning($"Rate limit has been reached. Waiting 1 minute...", ex);
+                        await Task.Delay(60000);
+                    }
+                    else
+                    {
+                        _log.Warning($"RpcException. {ex.Status}; {ex.StatusCode}", ex);
+                    }
                 }
                 catch (Exception ex)
                 {
