@@ -87,6 +87,8 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
                     request.State.Add(DepositState.Completed);
 
+                    _log.Info("Getting updates...", context: $"request: {request.ToJson()}");
+
                     var updates = _apiClient.Deposits.GetUpdates(request);
 
                     while (await updates.ResponseStream.MoveNext(_cancellationTokenSource.Token).ConfigureAwait(false))
@@ -100,6 +102,8 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
                             if (string.IsNullOrEmpty(item.ReferenceId))
                                 continue;
+
+                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}");
 
                             Guid operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
                             string assetId = assets.FirstOrDefault(x => x.SiriusAssetId == item.AssetId)?.Id;
@@ -131,6 +135,8 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                     {
                                         _log.Info(message: "Deduplicated by the ME", context: new {operationId, depositId = item.DepositId});
                                     }
+
+                                    _log.Info("Deposit processed", context: new {cashInResult.TransactionId});
 
                                     _cqrsEngine.PublishEvent(new CashinCompletedEvent
                                     {
