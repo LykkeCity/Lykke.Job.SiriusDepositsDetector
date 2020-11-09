@@ -55,7 +55,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
         public void Start()
         {
-            ProcessDepositsAsync().GetAwaiter().GetResult();
+            Task.Run(async () => await ProcessDepositsAsync());
         }
 
         public void Dispose()
