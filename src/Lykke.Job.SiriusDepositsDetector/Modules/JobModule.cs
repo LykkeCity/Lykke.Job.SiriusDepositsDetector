@@ -37,7 +37,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Modules
                 .SingleInstance();
 
             builder.RegisterInstance(
-                new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, true, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
+                new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
             ).As<Swisschain.Sirius.Api.ApiClient.IApiClient>();
 
             builder.RegisterType<DepositsDetectorService>()
