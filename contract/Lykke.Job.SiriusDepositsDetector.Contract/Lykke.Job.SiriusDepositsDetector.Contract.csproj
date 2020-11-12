@@ -24,11 +24,9 @@
     <NoWarn>1701;1702;1705;1591</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup Label="dotnet pack instructions">
-    <Content Include="$(OutputPath)Lykke.Job.LykkeJob.Contract.pdb">
-      <Pack>true</Pack>
-      <PackagePath>lib/netstandard2.0</PackagePath>
-    </Content>
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" Version="2020.1.0" />
+    <PackageReference Include="MessagePack" Version="1.7.3.4" />
   </ItemGroup>
 
 </Project>
