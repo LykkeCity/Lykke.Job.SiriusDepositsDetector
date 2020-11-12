@@ -65,7 +65,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
         public void Stop()
         {
-            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource?.Cancel();
         }
 
         private async Task ProcessDepositsAsync()
