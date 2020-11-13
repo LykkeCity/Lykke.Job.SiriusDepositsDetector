@@ -85,7 +85,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                         Cursor = _lastCursor
                     };
 
-                    request.State.Add(DepositState.Completed);
+                    request.State.Add(DepositState.Confirmed);
 
                     _log.Info("Getting updates...", context: $"request: {request.ToJson()}");
 
