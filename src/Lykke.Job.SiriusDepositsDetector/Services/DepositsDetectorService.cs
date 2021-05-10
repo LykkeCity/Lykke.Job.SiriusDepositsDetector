@@ -100,8 +100,11 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             if (item.DepositUpdateId <= _lastCursor)
                                 continue;
 
-                            if (string.IsNullOrEmpty(item.ReferenceId))
+                            if (string.IsNullOrWhiteSpace(item.UserNativeId))
+                            {
+                                _log.Warning("UserNativeId is empty");
                                 continue;
+                            }
 
                             _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}");
 
@@ -117,7 +120,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             var cashInResult = await _meClient.CashInOutAsync
                             (
                                 id:  operationId.ToString(),
-                                clientId: item.ReferenceId,
+                                clientId: item.UserNativeId,
                                 assetId: assetId,
                                 amount: double.Parse(item.Amount.Value)
                             );
@@ -140,7 +143,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
                                     _cqrsEngine.PublishEvent(new CashinCompletedEvent
                                     {
-                                        ClientId = item.ReferenceId,
+                                        ClientId = item.UserNativeId,
                                         AssetId = assetId,
                                         Amount = decimal.Parse(item.Amount.Value),
                                         OperationId = operationId,
