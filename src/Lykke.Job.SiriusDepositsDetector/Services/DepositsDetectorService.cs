@@ -120,7 +120,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             var cashInResult = await _meClient.CashInOutAsync
                             (
                                 id:  operationId.ToString(),
-                                clientId: item.UserNativeId,
+                                clientId: item.ReferenceId ?? item.UserNativeId, // passing ReferenceId if API wallet, ClientId if trading wallet
                                 assetId: assetId,
                                 amount: double.Parse(item.Amount.Value)
                             );
@@ -147,7 +147,8 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                         AssetId = assetId,
                                         Amount = decimal.Parse(item.Amount.Value),
                                         OperationId = operationId,
-                                        TransactionHash = item.TransactionInfo.TransactionId
+                                        TransactionHash = item.TransactionInfo.TransactionId,
+                                        WalletId = item.ReferenceId // null if deposit for trading wallet
                                     }, SiriusDepositsDetectorBoundedContext.Name);
 
                                     await _lastCursorRepository.AddAsync(_brokerAccountId, item.DepositUpdateId);
