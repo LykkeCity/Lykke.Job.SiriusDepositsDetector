@@ -11,5 +11,6 @@ namespace Lykke.Job.SiriusDepositsDetector.Contract.Events
         public decimal Amount { get; set; }
         public string AssetId { get; set; }
         public string TransactionHash { get; set; }
+        public string WalletId { set; get; }
     }
 }
