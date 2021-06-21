@@ -120,7 +120,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             var cashInResult = await _meClient.CashInOutAsync
                             (
                                 id:  operationId.ToString(),
-                                clientId: item.ReferenceId,
+                                clientId: item.ReferenceId ?? item.UserNativeId,
                                 assetId: assetId,
                                 amount: double.Parse(item.Amount.Value)
                             );
