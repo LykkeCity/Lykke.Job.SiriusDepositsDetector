@@ -120,7 +120,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             var cashInResult = await _meClient.CashInOutAsync
                             (
                                 id:  operationId.ToString(),
-                                clientId: item.UserNativeId,
+                                clientId: item.ReferenceId ?? item.UserNativeId,
                                 assetId: assetId,
                                 amount: double.Parse(item.Amount.Value)
                             );
@@ -140,14 +140,15 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                     }
 
                                     _log.Info("Deposit processed", context: new {cashInResult.TransactionId});
-
+                                    
                                     _cqrsEngine.PublishEvent(new CashinCompletedEvent
                                     {
                                         ClientId = item.UserNativeId,
                                         AssetId = assetId,
                                         Amount = decimal.Parse(item.Amount.Value),
                                         OperationId = operationId,
-                                        TransactionHash = item.TransactionInfo.TransactionId
+                                        TransactionHash = item.TransactionInfo.TransactionId,
+                                        WalletId =  item.ReferenceId == item.UserNativeId ? default(string) : item.ReferenceId,
                                     }, SiriusDepositsDetectorBoundedContext.Name);
 
                                     await _lastCursorRepository.AddAsync(_brokerAccountId, item.DepositUpdateId);
