@@ -10,6 +10,6 @@ namespace Lykke.Job.SiriusDepositsDetector.Settings
         public SiriusApiServiceClientSettings SiriusApiServiceClient { get; set; }
         public MatchingEngineSettings MatchingEngineClient { get; set; }
         public AssetsServiceClientSettings AssetsServiceClient { get; set; }
-        public LykkeMailerliteServiceOptions MailerliteServiceClient { set; get; }
+        public LykkeMailerliteServiceSettings MailerliteServiceClient { set; get; }
     }
 }

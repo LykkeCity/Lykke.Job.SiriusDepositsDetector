@@ -41,10 +41,10 @@ namespace Lykke.Job.SiriusDepositsDetector.Modules
                 new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
             ).As<Swisschain.Sirius.Api.ApiClient.IApiClient>();
             
-            builder.RegisterInstance(
-                new LykkeLykkeMailerliteClient(_appSettings.CurrentValue.MailerliteServiceClient.GrpcServiceUrl.ToString())
-            ).As<ILykkeMailerliteClient>();
-
+            builder
+                .RegisterInstance(new LykkeMailerliteClient(_appSettings.CurrentValue.MailerliteServiceClient.GrpcServiceUrl, true))
+                .As<ILykkeMailerliteClient>();
+            
             builder.RegisterType<DepositsDetectorService>()
                 .WithParameter(TypedParameter.From(_appSettings.CurrentValue.SiriusApiServiceClient.BrokerAccountId))
                 .As<IStartable>()
