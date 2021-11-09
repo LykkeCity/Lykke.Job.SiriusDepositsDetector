@@ -11,6 +11,8 @@ using Lykke.Cqrs;
 using Lykke.Job.SiriusDepositsDetector.Contract;
 using Lykke.Job.SiriusDepositsDetector.Contract.Events;
 using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
+using Lykke.Mailerlite.ApiClient;
+using Lykke.Mailerlite.ApiContract;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.MatchingEngine.Connector.Models.Api;
 using Lykke.Service.Assets.Client;
@@ -25,6 +27,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
         private readonly IOperationIdsRepository _operationIdsRepository;
         private readonly IMatchingEngineClient _meClient;
         private readonly IAssetsServiceWithCache _assetsService;
+        private readonly ILykkeMailerliteClient _mailerliteClient;
         private readonly IApiClient _apiClient;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly long _brokerAccountId;
@@ -37,6 +40,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
             IOperationIdsRepository operationIdsRepository,
             IMatchingEngineClient meClient,
             IAssetsServiceWithCache assetsService,
+            ILykkeMailerliteClient mailerliteClient,
             IApiClient apiClient,
             ICqrsEngine cqrsEngine,
             long brokerAccountId,
@@ -45,6 +49,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
         {
             _lastCursorRepository = lastCursorRepository;
             _operationIdsRepository = operationIdsRepository;
+            _mailerliteClient = mailerliteClient;
             _meClient = meClient;
             _assetsService = assetsService;
             _apiClient = apiClient;
@@ -138,6 +143,13 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                     {
                                         _log.Info(message: "Deduplicated by the ME", context: new {operationId, depositId = item.DepositId});
                                     }
+
+                                    await _mailerliteClient.Customers.UpdateDepositAsync(new UpdateCustomerDepositRequest
+                                    {
+                                        CustomerId = item.UserNativeId,
+                                        RequestId = item.DepositId.ToString(),
+                                        Timestamp = item.CreatedAt
+                                    });
 
                                     _log.Info("Deposit processed", context: new {cashInResult.TransactionId});
                                     
