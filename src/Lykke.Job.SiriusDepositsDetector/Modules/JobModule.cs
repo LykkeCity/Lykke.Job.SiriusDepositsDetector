@@ -9,6 +9,7 @@ using Lykke.Job.SiriusDepositsDetector.AzureRepositories;
 using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
 using Lykke.Job.SiriusDepositsDetector.Services;
 using Lykke.Job.SiriusDepositsDetector.Settings;
+using Lykke.Mailerlite.ApiClient;
 using Lykke.Sdk;
 using Lykke.Service.Assets.Client;
 using Lykke.SettingsReader;
@@ -39,6 +40,10 @@ namespace Lykke.Job.SiriusDepositsDetector.Modules
             builder.RegisterInstance(
                 new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
             ).As<Swisschain.Sirius.Api.ApiClient.IApiClient>();
+            
+            builder.RegisterInstance(
+                new LykkeLykkeMailerliteClient(_appSettings.CurrentValue.MailerliteServiceClient.GrpcServiceUrl.ToString())
+            ).As<ILykkeMailerliteClient>();
 
             builder.RegisterType<DepositsDetectorService>()
                 .WithParameter(TypedParameter.From(_appSettings.CurrentValue.SiriusApiServiceClient.BrokerAccountId))

@@ -3,6 +3,7 @@ using Lykke.Job.SiriusDepositsDetector.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using Lykke.Mailerlite.ApiClient;
 using Lykke.Sdk;
 
 namespace Lykke.Job.SiriusDepositsDetector
