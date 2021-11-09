@@ -1,4 +1,5 @@
 ﻿using System;
+using Antares.Sdk.Services;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Tables;
@@ -10,7 +11,6 @@ using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
 using Lykke.Job.SiriusDepositsDetector.Services;
 using Lykke.Job.SiriusDepositsDetector.Settings;
 using Lykke.Mailerlite.ApiClient;
-using Lykke.Sdk;
 using Lykke.Service.Assets.Client;
 using Lykke.SettingsReader;
 
