@@ -38,6 +38,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.2.0" />
     <PackageReference Include="Swisschain.Sirius.Api.ApiClient" Version="1.0.0-beta.18" />
+    <PackageReference Include="Google.Cloud.Diagnostics.AspNetCore3" Version="4.2.0" />
+    <PackageReference Include="Grpc.Core" Version="2.36.4" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\contract\Lykke.Job.SiriusDepositsDetector.Contract\Lykke.Job.SiriusDepositsDetector.Contract.csproj" />
