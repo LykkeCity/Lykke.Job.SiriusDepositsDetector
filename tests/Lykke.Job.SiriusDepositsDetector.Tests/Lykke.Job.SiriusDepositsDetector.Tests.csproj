@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
@@ -14,5 +14,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Lykke.Job.SiriusDepositsDetector.DomainServices\Lykke.Job.SiriusDepositsDetector.DomainServices.csproj" />
+    <ProjectReference Include="..\..\src\Lykke.Job.SiriusDepositsDetector\Lykke.Job.SiriusDepositsDetector.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="NumericTruncationTests.cs" />
   </ItemGroup>
 </Project>
