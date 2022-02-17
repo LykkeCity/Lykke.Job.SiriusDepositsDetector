@@ -108,28 +108,27 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                 continue;
                             }
 
-                            var decimalAmount = decimal.Parse(item.Amount.Value,
-                                NumberStyles.Number,
-                                CultureInfo.InvariantCulture);
-                            var scale = decimalAmount.GetScale();
-                            var meAmount = ((double)decimalAmount).TruncateDecimalPlaces(scale, toUpper: false);
-                            
-                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}, meAmount: {meAmount}");
-
-                            Guid operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
-                            string assetId = assets.FirstOrDefault(x => x.SiriusAssetId == item.AssetId)?.Id;
-
-                            if (string.IsNullOrEmpty(assetId))
+                            var asset = assets.FirstOrDefault(x => x.SiriusAssetId == item.AssetId);
+                            if (asset == null)
                             {
                                 _log.Warning("Lykke asset not found", context: new {siriusAssetId = item.AssetId, depositId = item.DepositId});
                                 continue;
                             }
+                            
+                            var decimalAmount = decimal.Parse(item.Amount.Value,
+                                NumberStyles.Number,
+                                CultureInfo.InvariantCulture);
+                            var meAmount = ((double)decimalAmount).TruncateDecimalPlaces(asset.Accuracy, toUpper: false);
+                            
+                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}, meAmount: {meAmount}");
+
+                            Guid operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
 
                             var cashInResult = await _meClient.CashInOutAsync
                             (
                                 id:  operationId.ToString(),
                                 clientId: item.ReferenceId ?? item.UserNativeId,
-                                assetId: assetId,
+                                assetId: asset.Id,
                                 amount: meAmount
                             );
 
@@ -152,7 +151,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                     _cqrsEngine.PublishEvent(new CashinCompletedEvent
                                     {
                                         ClientId = item.UserNativeId,
-                                        AssetId = assetId,
+                                        AssetId = asset.Id,
                                         Amount = decimal.Parse(item.Amount.Value),
                                         OperationId = operationId,
                                         TransactionHash = item.TransactionInfo.TransactionId,
