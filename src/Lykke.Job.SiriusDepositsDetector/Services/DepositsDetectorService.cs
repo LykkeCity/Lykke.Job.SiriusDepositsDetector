@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Lykke.Cqrs;
 using Lykke.Job.SiriusDepositsDetector.Contract;
 using Lykke.Job.SiriusDepositsDetector.Contract.Events;
 using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
+using Lykke.Job.SiriusDepositsDetector.Utils;
 using Lykke.Mailerlite.ApiClient;
 using Lykke.Mailerlite.ApiContract;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
@@ -111,7 +113,13 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                 continue;
                             }
 
-                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}");
+                            var decimalAmount = decimal.Parse(item.Amount.Value,
+                                NumberStyles.Number,
+                                CultureInfo.InvariantCulture);
+                            var scale = decimalAmount.GetScale();
+                            var meAmount = ((double)decimalAmount).TruncateDecimalPlaces(scale, toUpper: false);
+                            
+                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}, meAmount: {meAmount}");
 
                             Guid operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
                             string assetId = assets.FirstOrDefault(x => x.SiriusAssetId == item.AssetId)?.Id;
@@ -127,7 +135,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                 id:  operationId.ToString(),
                                 clientId: item.ReferenceId ?? item.UserNativeId,
                                 assetId: assetId,
-                                amount: double.Parse(item.Amount.Value)
+                                amount: meAmount
                             );
 
                             if (cashInResult == null)
