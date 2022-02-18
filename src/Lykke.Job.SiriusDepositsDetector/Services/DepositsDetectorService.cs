@@ -12,7 +12,6 @@ using Lykke.Cqrs;
 using Lykke.Job.SiriusDepositsDetector.Contract;
 using Lykke.Job.SiriusDepositsDetector.Contract.Events;
 using Lykke.Job.SiriusDepositsDetector.Domain.Repositories;
-using Lykke.Job.SiriusDepositsDetector.Utils;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.MatchingEngine.Connector.Models.Api;
 using Lykke.Service.Assets.Client;
@@ -72,6 +71,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
         private async Task ProcessDepositsAsync()
         {
+            var errorsInTheRowCount = 0;
             _cancellationTokenSource = new CancellationTokenSource();
 
             while (!_cancellationTokenSource.IsCancellationRequested)
@@ -89,30 +89,39 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
                     request.State.Add(DepositState.Confirmed);
                             
-                    _log.Info("Getting updates...", context: $"request: {request.ToJson()}");
+                    _log.Info("Getting updates...", context: new
+                    {
+                        Cursor = request.Cursor
+                    });
 
                     var updates = _apiClient.Deposits.GetUpdates(request);
 
                     while (await updates.ResponseStream.MoveNext(_cancellationTokenSource.Token).ConfigureAwait(false))
                     {
-                        DepositUpdateArrayResponse update = updates.ResponseStream.Current;
+                        var update = updates.ResponseStream.Current;
 
                         foreach (var item in update.Items)
                         {
                             if (item.DepositUpdateId <= _lastCursor)
                                 continue;
 
-                            if (string.IsNullOrWhiteSpace(item.UserNativeId))
+                            if (string.IsNullOrWhiteSpace(item.UserNativeId) && item.DepositType != DepositType.Broker)
                             {
-                                _log.Warning("UserNativeId is empty");
-                                continue;
+                                _log.Warning("UserNativeId is empty", context: new
+                                {
+                                    SiriusDepositId = item.DepositId,
+                                    TransactionId = item.TransactionInfo?.TransactionId
+                                });
+                                
+                                throw new InvalidOperationException("UserNativeId is empty");
                             }
 
                             var asset = assets.FirstOrDefault(x => x.SiriusAssetId == item.AssetId);
                             if (asset == null)
                             {
                                 _log.Warning("Lykke asset not found", context: new {siriusAssetId = item.AssetId, depositId = item.DepositId});
-                                continue;
+                                
+                                throw new InvalidOperationException("Lykke asset not found");
                             }
                             
                             var decimalAmount = decimal.Parse(item.Amount.Value,
@@ -120,9 +129,17 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                 CultureInfo.InvariantCulture);
                             var meAmount = ((double)decimalAmount).TruncateDecimalPlaces(asset.Accuracy, toUpper: false);
                             
-                            _log.Info("Deposit detected", context: $"deposit: {item.ToJson()}, meAmount: {meAmount}");
+                            var operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
 
-                            Guid operationId = await _operationIdsRepository.GetOperationIdAsync(item.DepositId);
+                            _log.Info("Deposit detected", context: new
+                            {
+                                OperationId = operationId.ToString(),
+                                SiriusDepositId = item.DepositId,
+                                TransactionId = item.TransactionInfo?.TransactionId,
+                                AssetSymbol = asset.Symbol,
+                                Amount = item.Amount,
+                                MeAmount = meAmount
+                            });
 
                             var cashInResult = await _meClient.CashInOutAsync
                             (
@@ -134,6 +151,15 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
 
                             if (cashInResult == null)
                             {
+                                _log.Warning($"ME response is null, don't know what to do",
+                                    context: new
+                                    {
+                                        OperationId = operationId.ToString(),
+                                        SiriusDepositId = item.DepositId,
+                                        TransactionId = item.TransactionInfo?.TransactionId,
+                                        AssetSymbol = asset.Symbol
+                                    });
+
                                 throw new InvalidOperationException("ME response is null, don't know what to do");
                             }
 
@@ -141,12 +167,25 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             {
                                 case MeStatusCodes.Ok:
                                 case MeStatusCodes.Duplicate:
+                                    errorsInTheRowCount = 0;
+
                                     if (cashInResult.Status == MeStatusCodes.Duplicate)
                                     {
-                                        _log.Info(message: "Deduplicated by the ME", context: new {operationId, depositId = item.DepositId});
+                                        _log.Info(message: "Deduplicated by the ME", context: new
+                                        {
+                                            OperationId = operationId.ToString(),
+                                            SiriusDepositId = item.DepositId,
+                                            TransactionId = item.TransactionInfo?.TransactionId,
+                                            AssetSymbol = asset.Symbol
+                                        });
                                     }
 
-                                    _log.Info("Deposit processed", context: new {cashInResult.TransactionId});
+                                    _log.Info("Deposit processed", context: new
+                                    {
+                                        OperationId = operationId.ToString(),
+                                        SiriusDepositId = item.DepositId,
+                                        TransactionId = item.TransactionInfo?.TransactionId
+                                    });
                                     
                                     _cqrsEngine.PublishEvent(new CashinCompletedEvent
                                     {
@@ -164,11 +203,26 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                                     break;
 
                                 case MeStatusCodes.Runtime:
-                                    throw new Exception($"Cashin into the ME is failed. ME status: {cashInResult.Status}, ME message: {cashInResult.Message}");
+                                    _log.Warning($"Unexpected response from ME. ME status: {cashInResult.Status}, ME message: {cashInResult.Message}",
+                                        context: new
+                                        {
+                                            OperationId = operationId.ToString(),
+                                            SiriusDepositId = item.DepositId,
+                                            TransactionId = item.TransactionInfo?.TransactionId,
+                                            AssetSymbol = asset.Symbol
+                                        });
+                                    throw new Exception($"Unexpected response from ME. ME status: {cashInResult.Status}, ME message: {cashInResult.Message}");
 
                                 default:
-                                    _log.Warning($"Unexpected response from ME. Status: {cashInResult.Status}, ME message: {cashInResult.Message}", context: operationId.ToString());
-                                    break;
+                                    _log.Warning($"Unexpected response from ME. ME status: {cashInResult.Status}, ME message: {cashInResult.Message}", 
+                                        context: new
+                                        {
+                                            OperationId = operationId.ToString(),
+                                            SiriusDepositId = item.DepositId,
+                                            TransactionId = item.TransactionInfo?.TransactionId,
+                                            AssetSymbol = asset.Symbol
+                                        });
+                                    throw new Exception($"Unexpected response from ME. ME status: {cashInResult.Status}, ME message: {cashInResult.Message}");
                             }
                         }
                     }
@@ -177,9 +231,10 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                 }
                 catch (RpcException ex)
                 {
+                    errorsInTheRowCount++;
                     if (ex.StatusCode == StatusCode.ResourceExhausted)
                     {
-                        _log.Warning($"Rate limit has been reached. Waiting 1 minute...", ex);
+                        _log.Warning("Rate limit has been reached. Waiting 1 minute...", ex);
                         await Task.Delay(60000);
                     }
                     else
@@ -189,10 +244,16 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                 }
                 catch (Exception ex)
                 {
+                    errorsInTheRowCount++;
                     _log.Error(ex);
                 }
 
-                await Task.Delay(5000);
+                // Initial 2 seconds, 30 minutes max (if more than 20 errors in the row)
+                var delay = Math.Min(30 * 60 * 1000, 1000 * (int)Math.Pow(2, errorsInTheRowCount));
+
+                _log.Info($"Will retry in {delay} milliseconds");
+
+                await Task.Delay(delay);
             }
         }
     }
