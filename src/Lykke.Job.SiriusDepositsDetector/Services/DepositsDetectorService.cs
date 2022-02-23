@@ -105,14 +105,28 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                             if (item.DepositUpdateId <= _lastCursor)
                                 continue;
 
-                            if (string.IsNullOrWhiteSpace(item.UserNativeId) && item.DepositType != DepositType.Broker)
+                            if (item.DepositType == DepositType.Broker)
+                            {
+                                _log.Info("Broker deposit skipped", new
+                                {
+                                    SiriusDepositId = item.DepositId,
+                                    item.BlockchainId,
+                                    item.AssetId,
+                                    item.AssetSymbol,
+                                    item.AssetAddress,
+                                    item.TransactionInfo?.TransactionId
+                                });
+                                continue;
+                            }
+
+                            if (string.IsNullOrWhiteSpace(item.UserNativeId))
                             {
                                 _log.Warning("UserNativeId is empty", context: new
                                 {
                                     SiriusDepositId = item.DepositId,
-                                    TransactionId = item.TransactionInfo?.TransactionId
+                                    item.TransactionInfo?.TransactionId
                                 });
-                                
+
                                 throw new InvalidOperationException("UserNativeId is empty");
                             }
 
