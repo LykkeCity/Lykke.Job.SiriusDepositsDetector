@@ -66,7 +66,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Controllers
 
             var stream = _apiClient.Deposits.GetUpdates(siriusRequest);
 
-            if(await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            if(!await stream.ResponseStream.MoveNext(cancellationToken).ConfigureAwait(false))
             {
                 _log.Info("No updates found for the deposit", context: new
                 {
