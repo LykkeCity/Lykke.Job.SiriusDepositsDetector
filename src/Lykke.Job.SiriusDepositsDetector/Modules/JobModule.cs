@@ -1,6 +1,5 @@
 ﻿using System;
 using Autofac;
-using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Tables;
 using Common;
 using JetBrains.Annotations;
@@ -40,8 +39,12 @@ namespace Lykke.Job.SiriusDepositsDetector.Modules
                 new Swisschain.Sirius.Api.ApiClient.ApiClient(_appSettings.CurrentValue.SiriusApiServiceClient.GrpcServiceUrl, _appSettings.CurrentValue.SiriusApiServiceClient.ApiKey)
             ).As<Swisschain.Sirius.Api.ApiClient.IApiClient>();
 
+            builder.RegisterType<DepositProcessor>()
+                .AsSelf();
+
+            builder.RegisterInstance(_appSettings.CurrentValue.SiriusApiServiceClient);
+
             builder.RegisterType<DepositsDetectorService>()
-                .WithParameter(TypedParameter.From(_appSettings.CurrentValue.SiriusApiServiceClient.BrokerAccountId))
                 .As<IStartable>()
                 .As<IStopable>()
                 .AutoActivate()
