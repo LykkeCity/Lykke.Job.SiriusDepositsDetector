@@ -1,9 +1,11 @@
-﻿using JetBrains.Annotations;
-using Lykke.Job.SiriusDepositsDetector.Settings;
+﻿using Lykke.Job.SiriusDepositsDetector.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using Lykke.Sdk;
+using Antares.Sdk;
+using Autofac;
+using Lykke.SettingsReader;
+using Microsoft.Extensions.Configuration;
+using JetBrains.Annotations;
 
 namespace Lykke.Job.SiriusDepositsDetector
 {
@@ -16,10 +18,13 @@ namespace Lykke.Job.SiriusDepositsDetector
             ApiVersion = "v1"
         };
 
+        private IReloadingManagerWithConfiguration<AppSettings> _settings;
+        private LykkeServiceOptions<AppSettings> _lykkeOptions;
+
         [UsedImplicitly]
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
-            return services.BuildServiceProvider<AppSettings>(options =>
+            (_lykkeOptions, _settings) = services.ConfigureServices<AppSettings>(options =>
             {
                 options.SwaggerOptions = _swaggerOptions;
 
@@ -38,6 +43,16 @@ namespace Lykke.Job.SiriusDepositsDetector
             {
                 options.SwaggerOptions = _swaggerOptions;
             });
+        }
+
+        [UsedImplicitly]
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            var configurationRoot = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            builder.ConfigureContainerBuilder(_lykkeOptions, configurationRoot, _settings);
         }
     }
 }

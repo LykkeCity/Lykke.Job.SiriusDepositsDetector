@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Antares.Sdk.Services;
 using Common;
 using Common.Log;
 using Lykke.Common.Log;
-using Lykke.Sdk;
 
 namespace Lykke.Job.SiriusDepositsDetector.Services
 {

@@ -1,5 +1,5 @@
-﻿using Lykke.Job.SiriusDepositsDetector.Settings.JobSettings;
-using Lykke.Sdk.Settings;
+﻿using Antares.Sdk.Settings;
+using Lykke.Job.SiriusDepositsDetector.Settings.JobSettings;
 
 namespace Lykke.Job.SiriusDepositsDetector.Settings
 {
