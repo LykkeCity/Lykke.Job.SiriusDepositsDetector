@@ -1,4 +1,4 @@
-namespace Lykke.Job.SiriusDepositsDetector.ApiModels
+﻿namespace Lykke.Job.SiriusDepositsDetector.ApiModels
 {
     public class ProcessDepositRequest 
     {

@@ -7,6 +7,7 @@ using Lykke.Common.Log;
 using Lykke.Job.SiriusDepositsDetector.ApiModels;
 using Lykke.Job.SiriusDepositsDetector.Services;
 using Lykke.Job.SiriusDepositsDetector.Settings;
+using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client;
 using Microsoft.AspNetCore.Mvc;
 using Swisschain.Sirius.Api.ApiClient;
@@ -20,6 +21,7 @@ namespace Lykke.Job.SiriusDepositsDetector.Controllers
         private readonly IApiClient _apiClient;
         private readonly IAssetsServiceWithCache _assetsService;
         private readonly DepositProcessor _depositProcessor;
+        private readonly IMatchingEngineClient _meClient;
         private readonly long _brokerAccountId;
         private ILog _log;
 
@@ -28,13 +30,42 @@ namespace Lykke.Job.SiriusDepositsDetector.Controllers
             IApiClient apiClient,
             IAssetsServiceWithCache assetsService,
             SiriusApiServiceClientSettings siriusClientSettings,
-            DepositProcessor depositProcessor)
+            DepositProcessor depositProcessor,
+            IMatchingEngineClient meClient)
         {
             _apiClient = apiClient;
             _assetsService = assetsService;
             _depositProcessor = depositProcessor;
+            _meClient = meClient;
             _brokerAccountId = siriusClientSettings.BrokerAccountId;
             _log = logFactory.CreateLog(this);
+        }
+
+        [HttpPost("deposit")]
+        public async Task<ActionResult> Deposit()
+        {
+            var operationId = Guid.NewGuid();
+            var clientId = "test";
+            var assetId = "EUR";
+            var amount = 1.0;
+
+            _log.Info("Executing test deposit", context: new
+            {
+                OperationId = operationId,
+                Client = clientId,
+                AssetId = assetId,
+                Amount = amount
+            });
+
+            var cashInResult = await _meClient.CashInOutAsync
+            (
+                id: operationId.ToString(),
+                clientId: clientId,
+                assetId: assetId,
+                amount: amount
+            );
+
+            _log.Info($"Test deposit result {cashInResult}");
         }
 
         [HttpPost("process-deposit")]
