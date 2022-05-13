@@ -138,12 +138,31 @@ namespace Lykke.Job.SiriusDepositsDetector.Services
                     return;
                 }
 
-                // Initial 2 seconds, 30 minutes max (if more than 20 errors in the row)
-                var delay = Math.Min(30 * 60 * 1000, 1000 * (int)Math.Pow(2, errorsInTheRowCount));
+                try
+                {
+                    // Just in case we didn't foresee something
+                    checked
+                    {
+                        // It's needed to prevent overflow of the counter.
+                        errorsInTheRowCount = Math.Min(int.MaxValue - 1, errorsInTheRowCount);
 
-                _log.Info($"Will retry in {delay} milliseconds");
+                        // Initial 2 seconds, 30 minutes max (if more than 20 errors in the row)
+                        // It's needed to limit pow to avoid overflow of the Math.Pow result
+                        var pow = Math.Min(21, errorsInTheRowCount);
+                        var delay = Math.Min(30 * 60 * 1000, 1000 * (int)Math.Pow(2, pow));
 
-                await Task.Delay(delay);
+
+                        _log.Info($"Will retry in {delay} milliseconds");
+
+                        await Task.Delay(delay);
+                    }
+                } 
+                catch(Exception ex)
+                {
+                    _log.Error(ex);
+
+                    await Task.Delay(60000);
+                }
             }
         }
     }
