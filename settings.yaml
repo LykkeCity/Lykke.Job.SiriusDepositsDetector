@@ -24,7 +24,7 @@ SiriusApiServiceClient:
   GrpcServiceUrl:
     settings-key: SiriusApi-ServiceUrl
   ApiKey:
-    settings-key: SiriusApi-ApiKey
+    settings-key: SiriusApi-DepositDetector-ApiKey
   BrokerAccountId:
     settings-key: SiriusApi-BrokerAccountId
 MatchingEngineClient:
